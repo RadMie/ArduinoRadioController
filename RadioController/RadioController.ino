@@ -26,9 +26,9 @@
 
 //#define DEBUG
 
-char* git = "fffffff";
+char* git = "master";
 char* ver = "0.0.1";
-char* date = "22.05.15";
+char* date = "26.05.15";
 
 Timers<10> timer;          // 10 x diff timer
 

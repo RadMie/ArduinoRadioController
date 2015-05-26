@@ -20,6 +20,8 @@
 
 #### Fritzing Schematic
 
+![radiocontroller_bb](https://cloud.githubusercontent.com/assets/8116937/7807015/f3ace526-0387-11e5-8351-af93c5dc5dd5.png)
+
 #### Pin Function
 
 | PIN    | MODE           | FUNCTION                       |
