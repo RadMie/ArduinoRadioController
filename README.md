@@ -22,6 +22,10 @@
 
 ![radiocontroller_bb](https://cloud.githubusercontent.com/assets/8116937/7807015/f3ace526-0387-11e5-8351-af93c5dc5dd5.png)
 
+#### LCD Screenshots
+
+![screen](https://cloud.githubusercontent.com/assets/8116937/7812374/e625a936-03b1-11e5-8a7a-7b15571e3d54.png)
+
 #### Pin Function
 
 | PIN    | MODE           | FUNCTION                       |
