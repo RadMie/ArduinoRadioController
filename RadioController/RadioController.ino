@@ -7,6 +7,7 @@
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝ ╚═════╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝
 */
 #include <SPI.h>
+#include <Wire.h>
 #include <EEPROM.h>
 #include <VirtualWire.h>
 #include <Adafruit_GFX.h>
@@ -14,6 +15,8 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <RF24_config.h>
+#include <KalmanFilter.h>
+#include <MPU6050.h>
 #include "RF24.h"
 #include "Timers.h"
 #include "key.h"
@@ -24,11 +27,11 @@
 #include "rf433.h"
 #include "nrf24.h"
 
-//#define DEBUG
+#define DEBUG
 
-char* git = "master";
+char* git = "MPU-6050";
 char* ver = "0.0.1";
-char* date = "26.05.15";
+char* date = "28.05.15";
 
 Timers<10> timer;          // 10 x diff timer
 
@@ -64,6 +67,11 @@ LCD display = LCD(48, 46, 44, 9);                 // only Hardware SPI PIN(DC,CS
 RF433 Transmission433 = RF433(12, 11, 10, true);  // (tx,rx,ptt,inv)
 
 NRF24 TransmissionNRF24 = NRF24(6,7);             // only Hardware SPI PIN(ce,cs)
+
+MPU6050 mpu;
+
+KalmanFilter kalmanX(0.001, 0.003, 0.03);
+KalmanFilter kalmanY(0.001, 0.003, 0.03);
 
 Memory MemoryLcdContrast = Memory(0);
 Memory MemoryLcdBacklight = Memory(1);
@@ -146,16 +154,29 @@ int navMenu = 0;           // 0 - off , 1,2,3... lvl menu
 int navSubMenu = 0;        // 0 - off , 1,2,3... lvl submenu
 boolean navSubMenuSel = 0; // 0 - off, 1 - on
 
+float accPitch = 0;
+float accRoll = 0;
+
+float kalPitch = 0;
+float kalRoll = 0;
+
 void setup()   {
 
 #if defined(DEBUG)
-  Serial.begin(19200);
+  Serial.begin(115200);
 #endif
 
   display.init(MemoryLcdContrast.value, MemoryLcdBacklight.value);
 
   display.startPanel();
   delay(2000);
+  
+  while(!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G))
+  {
+    delay(500);
+  }
+  
+  mpu.calibrateGyro();
 
   timer.attach(0, 200, Switch);
   timer.attach(1, 1000, calcRate);
@@ -187,6 +208,38 @@ void loop() {
   Serial.print(" navMenu:"); Serial.print(navMenu); 
   Serial.print(" navSubMenu:"); Serial.print(navSubMenu);
   Serial.print(" navSubMenuSel:"); Serial.println(navSubMenuSel);*/
+  Vector acc = mpu.readNormalizeAccel();
+  Vector gyr = mpu.readNormalizeGyro();
+
+  // Calculate Pitch & Roll from accelerometer (deg)
+  accPitch = -(atan2(acc.XAxis, sqrt(acc.YAxis*acc.YAxis + acc.ZAxis*acc.ZAxis))*180.0)/M_PI;
+  accRoll  = (atan2(acc.YAxis, acc.ZAxis)*180.0)/M_PI;
+
+  // Kalman filter
+  kalPitch = kalmanY.update(accPitch, gyr.YAxis);
+  kalRoll = kalmanX.update(accRoll, gyr.XAxis);
+
+  Serial.print(accPitch);
+  Serial.print(":");
+  Serial.print(accRoll);
+  Serial.print(":");
+  Serial.print(kalPitch);
+  Serial.print(":");
+  Serial.print(kalRoll);
+  Serial.print(":");
+  Serial.print(acc.XAxis);
+  Serial.print(":");
+  Serial.print(acc.YAxis);
+  Serial.print(":");
+  Serial.print(acc.ZAxis);
+  Serial.print(":");
+  Serial.print(gyr.XAxis);
+  Serial.print(":");
+  Serial.print(gyr.YAxis);
+  Serial.print(":");
+  Serial.print(gyr.ZAxis);
+
+  Serial.println();
 #endif
   cCount++;
 }
