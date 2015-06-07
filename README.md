@@ -8,6 +8,7 @@
 - LCD PCD8544 - Nokia 5110
 - XY-FST (FS1000A) - 433MHz
 - nRF24L01+ 2.4GHz
+- MPU6050 - 3-Axis Accelerometer and Gyro
 
 #### Software
 
@@ -20,7 +21,7 @@
 
 #### Fritzing Schematic
 
-![radiocontroller_bb](https://cloud.githubusercontent.com/assets/8116937/7807015/f3ace526-0387-11e5-8351-af93c5dc5dd5.png)
+![radiocontroller_bb](https://cloud.githubusercontent.com/assets/8116937/8025580/fa482224-0d5a-11e5-8892-c9b212f8c371.png)
 
 #### LCD Screenshots
 
@@ -48,6 +49,8 @@
 |   A4   |  ANALOG        |  LX                            |
 |   A5   |  ANALOG        |  RX                            |
 |   A6   |  ANALOG        |  BATTERY                       |
+|   20   |  I2C SDA       |  SDA - MPU6050                 |
+|   21   |  I2C SCL       |  SCL - MPU6050                 |
 |   22   |  DIGITAL       |  KEY TRIM LY UP                |
 |   24   |  DIGITAL       |  KEY TRIM LY DOWN              |
 |   26   |  DIGITAL       |  KEY TRIM RY DOWN              |
