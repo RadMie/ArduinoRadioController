@@ -26,6 +26,7 @@
 #include "buzzer.h"
 #include "rf433.h"
 #include "nrf24.h"
+#include "printf.h"
 
 #define DEBUG
 
@@ -165,7 +166,7 @@ void setup()   {
 #if defined(DEBUG)
   Serial.begin(115200);
 #endif
-
+  printf_begin();
   display.init(MemoryLcdContrast.value, MemoryLcdBacklight.value);
 
   display.startPanel();

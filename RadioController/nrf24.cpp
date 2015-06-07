@@ -21,6 +21,7 @@ void NRF24::init(uint8_t channel, uint8_t PAlevel, uint8_t DataRate, bool AutoAc
   openReadingPipe(0,addr);       
   stopListening();
   powerUp();
+  //printDetails(); 
 }
 
 void NRF24::sendData(uint8_t LX, uint8_t LY, uint8_t RX, uint8_t RY, uint8_t VRA, uint8_t VRB, uint8_t keySwitch) {

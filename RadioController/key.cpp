@@ -16,5 +16,3 @@ boolean Key::pressed()
     return 1;
   }
 }
-
-
