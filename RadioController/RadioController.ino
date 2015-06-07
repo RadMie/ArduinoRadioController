@@ -28,11 +28,9 @@
 #include "nrf24.h"
 #include "printf.h"
 
-#define DEBUG
-
 char* git = "MPU-6050";
 char* ver = "0.0.1";
-char* date = "28.05.15";
+char* date = "07.06.15";
 
 Timers<10> timer;          // 10 x diff timer
 
@@ -69,10 +67,13 @@ RF433 Transmission433 = RF433(12, 11, 10, true);  // (tx,rx,ptt,inv)
 
 NRF24 TransmissionNRF24 = NRF24(6,7);             // only Hardware SPI PIN(ce,cs)
 
-MPU6050 mpu;
+MPU6050 mpu;                                      // I2C
 
 KalmanFilter kalmanX(0.001, 0.003, 0.03);
 KalmanFilter kalmanY(0.001, 0.003, 0.03);
+
+Vector acc;
+Vector gyr;
 
 Memory MemoryLcdContrast = Memory(0);
 Memory MemoryLcdBacklight = Memory(1);
@@ -109,6 +110,8 @@ Memory MemoryChannelConfigSWB = Memory(32);
 Memory MemoryChannelConfigSWB1 = Memory(33);
 Memory MemoryLcdFreq = Memory(34);
 Memory MemoryBatteryFreq = Memory(35);
+Memory MemoryProcessing = Memory(36);
+Memory MemoryAccRXRY = Memory(37);
 
 Memory MemoryCalibrationRYmin = Memory(100,101);
 Memory MemoryCalibrationRYmax = Memory(102,103);
@@ -157,20 +160,18 @@ boolean navSubMenuSel = 0; // 0 - off, 1 - on
 
 float accPitch = 0;
 float accRoll = 0;
-
 float kalPitch = 0;
 float kalRoll = 0;
 
 void setup()   {
 
-#if defined(DEBUG)
   Serial.begin(115200);
-#endif
+  
   printf_begin();
   display.init(MemoryLcdContrast.value, MemoryLcdBacklight.value);
 
   display.startPanel();
-  delay(2000);
+  delay(1000);
   
   while(!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G))
   {
@@ -196,53 +197,35 @@ void loop() {
   AnalogProcess();
   TransmissionProcess();
   Buzz.process();
+  MpuProcess();
+  Processing();
+  
+  cCount++;
+}
 
-#if defined(DEBUG)
-  /*Serial.print("LX:"); Serial.print(mainLX); 
-  Serial.print(",LY:"); Serial.print(mainLY); 
-  Serial.print(",RX:"); Serial.print(mainRX); 
-  Serial.print(",RY:"); Serial.print(mainRY); 
-  Serial.print(",VRA:"); Serial.print(mainVRA);
-  Serial.print(",VRB:"); Serial.print(mainVRB);
-  Serial.print(",KEY:"); Serial.println(keySwitch);
-  Serial.print("navPanel:"); Serial.print(navPanel); 
-  Serial.print(" navMenu:"); Serial.print(navMenu); 
-  Serial.print(" navSubMenu:"); Serial.print(navSubMenu);
-  Serial.print(" navSubMenuSel:"); Serial.println(navSubMenuSel);*/
-  Vector acc = mpu.readNormalizeAccel();
-  Vector gyr = mpu.readNormalizeGyro();
+void Processing() {
+  
+  if(MemoryProcessing.value) {
+    
+    // MPU6050 + Kalman Filter
+    Serial.print(accPitch); Serial.print(":"); Serial.print(accRoll); Serial.print(":"); 
+    Serial.print(kalPitch); Serial.print(":"); Serial.print(kalRoll); Serial.print(":");
+    Serial.print(acc.XAxis); Serial.print(":"); Serial.print(acc.YAxis); Serial.print(":"); Serial.print(acc.ZAxis); Serial.print(":");
+    Serial.print(gyr.XAxis); Serial.print(":"); Serial.print(gyr.YAxis); Serial.print(":"); Serial.print(gyr.ZAxis); Serial.println();
+  }
+}
 
-  // Calculate Pitch & Roll from accelerometer (deg)
-  accPitch = -(atan2(acc.XAxis, sqrt(acc.YAxis*acc.YAxis + acc.ZAxis*acc.ZAxis))*180.0)/M_PI;
+void MpuProcess() {
+  
+  acc = mpu.readNormalizeAccel();
+  gyr = mpu.readNormalizeGyro();
+
+  //accPitch = -(atan2(acc.XAxis, sqrt(acc.YAxis*acc.YAxis + acc.ZAxis*acc.ZAxis))*180.0)/M_PI;
+  accPitch = -(atan2(acc.XAxis, acc.ZAxis)*180.0)/M_PI;
   accRoll  = (atan2(acc.YAxis, acc.ZAxis)*180.0)/M_PI;
 
-  // Kalman filter
   kalPitch = kalmanY.update(accPitch, gyr.YAxis);
   kalRoll = kalmanX.update(accRoll, gyr.XAxis);
-
-  Serial.print(accPitch);
-  Serial.print(":");
-  Serial.print(accRoll);
-  Serial.print(":");
-  Serial.print(kalPitch);
-  Serial.print(":");
-  Serial.print(kalRoll);
-  Serial.print(":");
-  Serial.print(acc.XAxis);
-  Serial.print(":");
-  Serial.print(acc.YAxis);
-  Serial.print(":");
-  Serial.print(acc.ZAxis);
-  Serial.print(":");
-  Serial.print(gyr.XAxis);
-  Serial.print(":");
-  Serial.print(gyr.YAxis);
-  Serial.print(":");
-  Serial.print(gyr.ZAxis);
-
-  Serial.println();
-#endif
-  cCount++;
 }
 
 void AnalogProcess() {
@@ -277,8 +260,12 @@ void AnalogProcess() {
   if(MemoryChannelConfigRX.value == OFF) {
     mainRX = 128;
   } else if(MemoryChannelConfigRX.value == NOR) {
-    mainRX = map(AnalogRX.read8BIT(MemoryCalibrationRXmin.value16bit, MemoryCalibrationRXmax.value16bit), 0, 255, 127 - MemoryLimitRX.value, 128 + MemoryLimitRX.value);
-    mainRX = max(min(mainRX + map(MemoryTrimRX.value,0,255,-128,+128),255),0);
+    if(MemoryAccRXRY.value) {
+      mainRX = map(max(min((int)(kalRoll * 100),9000),-9000), -9000, 9000, 0, 255);
+    } else {
+      mainRX = map(AnalogRX.read8BIT(MemoryCalibrationRXmin.value16bit, MemoryCalibrationRXmax.value16bit), 0, 255, 127 - MemoryLimitRX.value, 128 + MemoryLimitRX.value);
+      mainRX = max(min(mainRX + map(MemoryTrimRX.value,0,255,-128,+128),255),0);  
+    }
   } else if(MemoryChannelConfigRX.value == INV) { 
   } else if(MemoryChannelConfigRX.value == LX) {
   } else if(MemoryChannelConfigRX.value == LY) {
@@ -290,8 +277,12 @@ void AnalogProcess() {
   if(MemoryChannelConfigRY.value == OFF) {
     mainRY = 128;
   } else if(MemoryChannelConfigRY.value == NOR) {
-     mainRY = map(AnalogRY.read8BIT(MemoryCalibrationRYmin.value16bit, MemoryCalibrationRYmax.value16bit), 0, 255, 127 - MemoryLimitRY.value, 128 + MemoryLimitRY.value);
-     mainRY = max(min(mainRY + map(MemoryTrimRY.value,0,255,-128,+128),255),0);
+    if(MemoryAccRXRY.value) {
+      mainRY = map(max(min((int)(kalPitch * 100),9000),-9000), -9000, 9000, 0, 255);
+    } else {
+      mainRY = map(AnalogRY.read8BIT(MemoryCalibrationRYmin.value16bit, MemoryCalibrationRYmax.value16bit), 0, 255, 127 - MemoryLimitRY.value, 128 + MemoryLimitRY.value);
+      mainRY = max(min(mainRY + map(MemoryTrimRY.value,0,255,-128,+128),255),0);  
+    }
   } else if(MemoryChannelConfigRY.value == INV) {
   } else if(MemoryChannelConfigRY.value == LX) {
   } else if(MemoryChannelConfigRY.value == LY) {
