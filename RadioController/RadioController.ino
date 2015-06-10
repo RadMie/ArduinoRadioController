@@ -112,6 +112,7 @@ Memory MemoryLcdFreq = Memory(34);
 Memory MemoryBatteryFreq = Memory(35);
 Memory MemoryProcessing = Memory(36);
 Memory MemoryAccRXRY = Memory(37);
+Memory MemorySpeedProcessing = Memory(38);
 
 Memory MemoryCalibrationRYmin = Memory(100,101);
 Memory MemoryCalibrationRYmax = Memory(102,103);
@@ -134,7 +135,7 @@ Memory MemoryTrimLY = Memory(302);
 Memory MemoryTrimLX = Memory(303);
 Memory MemoryTrimRX = Memory(304);
 
-typedef enum { LCD = 1, CALIBRATION, TRIMMED, SOUND, BATTERY, TRANSMISSION, LIMITS, MIXER, MODEL, VERSION, T433, T24, SYSTEM };
+typedef enum { LCD = 1, CALIBRATION, TRIMMED, SOUND, BATTERY, TRANSMISSION, LIMITS, MIXER, MODEL, VERSION, T433, T24, SYSTEM, MPU6050, PROCESSING };
 typedef enum { LXMIN = 1, LXMAX, LYMIN, LYMAX, RXMIN, RXMAX, RYMIN, RYMAX };
 typedef enum { OFF = 1, NOR, INV, LX, LY, RX, RY, VRA, VRB };
 
@@ -164,8 +165,19 @@ float kalPitch = 0;
 float kalRoll = 0;
 
 void setup()   {
-
-  Serial.begin(115200);
+  
+  switch(MemorySpeedProcessing.value) {
+    case 1: Serial.begin(2400);
+      break;
+    case 2: Serial.begin(4800);
+      break;
+    case 3: Serial.begin(9600);
+      break;
+    case 4: Serial.begin(19200);
+      break;
+    case 5: Serial.begin(115200);
+      break;
+  }
   
   printf_begin();
   display.init(MemoryLcdContrast.value, MemoryLcdBacklight.value);
@@ -558,6 +570,30 @@ void pressSel() {
         break;
       case SYSTEM:
         break;
+      case MPU6050:
+        if(navSubMenu == 1) {
+          MemoryAccRXRY.write8bit();
+        }
+        break;
+      case PROCESSING:
+        if(navSubMenu == 1) {
+          MemoryProcessing.write8bit();
+        } else if(navSubMenu == 2) {
+          MemorySpeedProcessing.write8bit();
+          switch(MemorySpeedProcessing.value) {
+            case 1: Serial.begin(2400);
+              break;
+            case 2: Serial.begin(4800);
+              break;
+            case 3: Serial.begin(9600);
+              break;
+            case 4: Serial.begin(19200);
+              break;
+            case 5: Serial.begin(115200);
+              break;
+          }
+        }
+        break;
     }
     navSubMenuSel = 0;
   } else if(navSubMenu) {
@@ -731,6 +767,21 @@ void pressPlus() {
         }
         break;
       case SYSTEM:
+        break;
+      case MPU6050:
+        if(navSubMenu == 1) {
+          MemoryAccRXRY.value++;
+          if(MemoryAccRXRY.value > 1) MemoryAccRXRY.value = 1;
+        }
+        break;
+      case PROCESSING:
+        if(navSubMenu == 1) {
+          MemoryProcessing.value++;
+          if(MemoryProcessing.value > 1) MemoryProcessing.value = 1;
+        } else if(navSubMenu == 2) {
+          MemorySpeedProcessing.value++;
+          if(MemorySpeedProcessing.value > 5) MemorySpeedProcessing.value = 5;  
+        }
         break;
     }  
   } else if(navSubMenu) {
@@ -914,6 +965,21 @@ void pressMinus() {
         break;
       case SYSTEM:
         break;
+      case MPU6050:
+        if(navSubMenu == 1) {
+          MemoryAccRXRY.value--;
+          if(MemoryAccRXRY.value == 255) MemoryAccRXRY.value = 0;
+        }
+        break;
+      case PROCESSING:
+        if(navSubMenu == 1) {
+          MemoryProcessing.value--;
+          if(MemoryProcessing.value == 255) MemoryProcessing.value = 0;
+        } else if(navSubMenu == 2) {
+          MemorySpeedProcessing.value--;  
+          if(MemorySpeedProcessing.value < 1) MemorySpeedProcessing.value = 1;
+        }
+        break;
     }  
   } else if(navSubMenu) {
     navSubMenu++;
@@ -955,9 +1021,15 @@ void pressMinus() {
         break;
       case SYSTEM:
         break;
+      case MPU6050:
+        if(navSubMenu > 1) navSubMenu = 1;
+        break;
+      case PROCESSING:
+        if(navSubMenu > 2) navSubMenu = 2;
+        break;
     } 
   } else if(navMenu) {
-    navMenu++; if(navMenu > 13) navMenu = 13;
+    navMenu++; if(navMenu > 15) navMenu = 15;
   } else {
     if(navPanel == 5) {
       if(MemoryLimitRX.value != MemoryLimitRY.value) MemoryLimitRX.value = MemoryLimitRY.value;
@@ -1114,6 +1186,10 @@ void Display() {
       display.subMenu24(MemoryChannel24.value, MemoryPAlvl24.value, MemoryRate24.value, MemoryAutoAck24.value, MemoryDelay24.value, MemoryCount24.value, MemoryCRC24.value, navSubMenu, navSubMenuSel);
     } else if(navMenu == SYSTEM) {
       display.subMenuSystem(navSubMenu, navSubMenuSel);
+    } else if(navMenu == MPU6050) {
+      display.subMenuMPU6050(MemoryAccRXRY.value, navSubMenu, navSubMenuSel);
+    } else if(navMenu == PROCESSING) {
+      display.subMenuProcessing(MemoryProcessing.value, MemorySpeedProcessing.value, navSubMenu, navSubMenuSel);
     }
   } else if(navMenu) {
     display.mainMenu(navMenu);

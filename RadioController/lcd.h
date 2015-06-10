@@ -45,7 +45,9 @@ class LCD : public Adafruit_PCD8544 {
     void subMenu433(uint16_t bps, int pos, boolean sel);
     void subMenu24(uint8_t channel, uint8_t pa, uint8_t ra, uint8_t ack, uint8_t delay, uint8_t count, uint8_t cr, int pos, boolean sel);
     void subMenuSystem(int pos, boolean sel);
-    
+    void subMenuMPU6050(uint8_t accRXRY, int pos, boolean sel);
+    void subMenuProcessing(uint8_t proccesing, uint8_t speedserial, int pos, boolean sel);
+  
   private:
     int _bk;
     char* _chConvNrTochar(uint8_t nr);
